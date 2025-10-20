@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to PDF Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        .sortable-ghost {
+            opacity: 0.4;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-900">
+    
+    <footer class="mt-12 text-center text-xs text-gray-400">
+        &copy; bys
+    </footer>
+
+    <div id="loading-indicator" class="fixed inset-0 z-40 hidden bg-black bg-opacity-40 backdrop-blur-sm">
+        <div class="flex min-h-screen items-center justify-center px-4">
+            <div class="w-full max-w-md rounded-xl bg-white px-8 py-6 shadow-xl">
+                <p class="text-center text-base font-semibold text-gray-700">Mengonversi, mohon tunggu...</p>
+                <div class="mt-4">
+                    <div class="mb-2 flex items-center justify-between text-sm font-semibold text-gray-600">
+                        <span>Status</span>
+                        <span id="progress-label" class="text-blue-600">0%</span>
+                    </div>
+                    <div class="h-3 w-full rounded-full bg-gray-200">
+                        <div id="progress-bar" class="h-3 w-0 rounded-full bg-blue-600 transition-all duration-200 ease-out"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16 pt-12 lg:px-8">
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl font-bold tracking-tight text-gray-900">Convert Images to PDF</h1>
+            <p class="mt-3 text-base text-gray-600">Unggah gambar, atur urutan, pilih efek, dan unduh hasil PDF dengan mudah.</p>
+        </header>
+
+        <section class="mb-8 rounded-2xl border border-dashed border-blue-300 bg-white p-6 shadow-sm">
+            <label for="image-upload" class="flex cursor-pointer flex-col items-center justify-center gap-3 text-blue-600">
+                <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold">
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0L8 8m4-4l4 4" />
+                    </svg>
+                    Pilih Gambar
+                </span>
+                <span class="text-xs text-gray-500">Format didukung: PNG, JPG, JPEG</span>
+            </label>
+            <input type="file" id="image-upload" multiple accept="image/*" class="hidden">
+        </section>
+
+        <section class="flex flex-1 flex-col">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                    <p class="text-gray-500">Seret kartu gambar untuk mengubah urutan atau gunakan opsi urut.</p>
+                    <span id="image-count" class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 font-semibold text-gray-600">
+                        <svg class="h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
+                        </svg>
+                        <span id="image-count-text">Belum ada gambar</span>
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200">
+                        <span>Urutkan</span>
+                        <select id="sort-menu" class="w-40 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
+                            <option value="manual">Urutan Manual</option>
+                            <option value="name-asc">Nama (A-Z)</option>
+                            <option value="name-desc">Nama (Z-A)</option>
+                            <option value="upload-newest">Terbaru</option>
+                            <option value="upload-oldest">Terlama</option>
+                            <option value="effect">Efek</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200">
+                        <span>Efek Semua</span>
+                        <select id="global-effect" class="w-44 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
+                            <option value="color">Normal (Color)</option>
+                            <option value="bw">Black & White</option>
+                            <option value="scan">Scan Effect</option>
+                            <option value="mixed" disabled>Campuran (Manual)</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200">
+                        <span>Kompresi</span>
+                        <select id="compression-mode" class="w-48 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
+                            <option value="none">No Kompres (Asli)</option>
+                            <option value="best">Best Kompres</option>
+                            <option value="manual">Manual Kompres</option>
+                            <option value="max">Maximum Kompres</option>
+                        </select>
+                    </label>
+                    <div id="manual-quality-wrapper" class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200 hidden">
+                        <span>Kualitas</span>
+                        <input id="manual-quality" type="range" min="40" max="95" value="80" class="h-1.5 w-32 accent-blue-600">
+                        <span id="manual-quality-value" class="font-mono text-blue-600">80%</span>
+                    </div>
+                    <button id="convert-btn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m-3-3h6m2 7H7a2 2 0 01-2-2V7a2 2 0 012-2h5l2 2h5a2 2 0 012 2v9a2 2 0 01-2 2z" />
+                        </svg>
+                        Convert to PDF
+                    </button>
+                </div>
+            </div>
+
+            <div id="preview-container" class="flex flex-wrap justify-center gap-4 lg:justify-start">
+                <!-- Preview cards rendered here -->
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const previewContainer = $("#preview-container");
+        const sortMenu = $("#sort-menu");
+        const convertBtn = $("#convert-btn");
+        const globalEffectSelect = $("#global-effect");
+        const imageCountText = $("#image-count-text");
+        const loadingIndicator = $("#loading-indicator");
+        const progressBar = $("#progress-bar");
+        const progressLabel = $("#progress-label");
+        const compressionModeSelect = $("#compression-mode");
+        const manualQualityWrapper = $("#manual-quality-wrapper");
+        const manualQualityInput = $("#manual-quality");
+        const manualQualityValue = $("#manual-quality-value");
+        const filenameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+        let uploadCounter = 0;
+        let currentGlobalEffect = "color";
+        let progressInterval = null;
+        let currentProgress = 0;
+
+        function updateProgressBar(value) {
+            currentProgress = Math.min(100, value);
+            progressBar.css("width", `${currentProgress}%`);
+            progressLabel.text(`${Math.round(currentProgress)}%`);
+        }
+
+        function startProgressBar() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            currentProgress = 0;
+            updateProgressBar(5);
+            progressInterval = setInterval(() => {
+                if (currentProgress >= 90) {
+                    return;
+                }
+                const increment = Math.random() * 12;
+                updateProgressBar(Math.min(90, currentProgress + increment));
+            }, 350);
+        }
+
+        function finishProgressBar() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            updateProgressBar(100);
+            setTimeout(() => {
+                loadingIndicator.addClass("hidden");
+                updateProgressBar(0);
+            }, 350);
+        }
+
+        function updateManualCompressionVisibility() {
+            const showManual = compressionModeSelect.val() === "manual";
+            manualQualityWrapper.toggleClass("hidden", !showManual);
+            const shouldDisable = !showManual || convertBtn.prop("disabled");
+            manualQualityInput.prop("disabled", shouldDisable);
+        }
+
+        function setLoading(isLoading) {
+            convertBtn.prop("disabled", isLoading);
+            sortMenu.prop("disabled", isLoading);
+            globalEffectSelect.prop("disabled", isLoading);
+            compressionModeSelect.prop("disabled", isLoading);
+            convertBtn.toggleClass("opacity-60 cursor-not-allowed", isLoading);
+
+            if (isLoading) {
+                loadingIndicator.removeClass("hidden");
+                startProgressBar();
+            } else {
+                finishProgressBar();
+            }
+            updateManualCompressionVisibility();
+        }
+
+        function updateImageCount() {
+            const count = $(".image-preview").length;
+            const text = count === 0 ? "Belum ada gambar" : count === 1 ? "1 gambar dipilih" : `${count} gambar dipilih`;
+            imageCountText.text(text);
+        }
+
+        function syncGlobalEffectState() {
+            const selectors = $(".effect-selector");
+            if (!selectors.length) {
+                currentGlobalEffect = "color";
+                globalEffectSelect.val("color");
+                return;
+            }
+            const values = new Set(selectors.map(function () {
+                return $(this).val();
+            }).get());
+            if (values.size === 1) {
+                const value = selectors.first().val();
+                currentGlobalEffect = value;
+                globalEffectSelect.val(value);
+            } else {
+                globalEffectSelect.val("mixed");
+            }
+        }
+
+        function applyEffectToAll(effect) {
+            $(".effect-selector").each(function () {
+                $(this).val(effect);
+                $(this).closest(".image-preview").attr("data-effect", effect);
+            });
+            currentGlobalEffect = effect;
+            syncGlobalEffectState();
+        }
+
+        function sortPreviews(mode) {
+            const previews = $(".image-preview").get();
+            if (!previews.length || mode === "manual") {
+                return;
+            }
+
+            previews.sort((a, b) => {
+                if (mode === "name-asc" || mode === "name-desc") {
+                    const nameA = a.dataset.name || "";
+                    const nameB = b.dataset.name || "";
+                    return mode === "name-asc" ? filenameCollator.compare(nameA, nameB) : filenameCollator.compare(nameB, nameA);
+                }
+                if (mode === "upload-newest" || mode === "upload-oldest") {
+                    const indexA = Number(a.dataset.uploadIndex || 0);
+                    const indexB = Number(b.dataset.uploadIndex || 0);
+                    return mode === "upload-newest" ? indexB - indexA : indexA - indexB;
+                }
+                if (mode === "effect") {
+                    const effectA = a.dataset.effect || "";
+                    const effectB = b.dataset.effect || "";
+                    return effectA.localeCompare(effectB);
+                }
+                return 0;
+            });
+
+            previews.forEach((preview) => previewContainer.append(preview));
+        }
+
+        $("#image-upload").on("change", function (event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) {
+                event.target.value = "";
+                return;
+            }
+
+            const activeSort = sortMenu.val();
+
+            files.forEach((file) => {
+                const reader = new FileReader();
+                const uploadIndex = uploadCounter++;
+                reader.onload = function (e) {
+                    const previewElement = $(`
+                        <div class="image-preview relative flex w-56 flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md" data-upload-index="${uploadIndex}">
+                            <button class="remove-btn absolute -top-2 -right-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600" type="button" aria-label="Hapus gambar">
+                                <span class="text-sm font-bold">&times;</span>
+                            </button>
+                            <img src="${e.target.result}" alt="Preview" class="h-44 w-full rounded-lg bg-gray-50 object-contain">
+                            <div class="image-name break-words text-sm font-semibold text-gray-700"></div>
+                            <label class="text-xs font-medium text-gray-500">
+                                Efek:
+                                <select class="effect-selector mt-1 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                    <option value="color">Normal (Color)</option>
+                                    <option value="bw">Black & White</option>
+                                    <option value="scan">Scan Effect</option>
+                                </select>
+                            </label>
+                        </div>
+                    `);
+                    previewElement.attr("data-name", file.name.toLowerCase());
+                    previewElement.attr("data-effect", currentGlobalEffect);
+                    previewElement.attr("data-upload-index", uploadIndex);
+                    previewElement.find(".image-name").text(file.name);
+                    previewElement.find(".effect-selector").val(currentGlobalEffect);
+                    previewElement.data("file", file);
+                    previewContainer.append(previewElement);
+                    updateImageCount();
+                    syncGlobalEffectState();
+                    sortPreviews(activeSort);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            event.target.value = "";
+        });
+
+        new Sortable(previewContainer[0], {
+            animation: 150,
+            ghostClass: "sortable-ghost",
+            onEnd() {
+                sortMenu.val("manual");
+            }
+        });
+
+        sortMenu.on("change", function () {
+            sortPreviews($(this).val());
+        });
+
+        manualQualityInput.on("input change", function () {
+            manualQualityValue.text(`${$(this).val()}%`);
+        });
+        manualQualityValue.text(`${manualQualityInput.val()}%`);
+
+        compressionModeSelect.on("change", updateManualCompressionVisibility);
+        updateManualCompressionVisibility();
+
+        globalEffectSelect.on("change", function () {
+            const value = $(this).val();
+            if (value === "mixed") {
+                return;
+            }
+            if (!$(".image-preview").length) {
+                currentGlobalEffect = value;
+                return;
+            }
+            applyEffectToAll(value);
+        });
+
+        previewContainer.on("click", ".remove-btn", function () {
+            const preview = $(this).closest(".image-preview");
+            preview.removeData("file");
+            preview.remove();
+            updateImageCount();
+            syncGlobalEffectState();
+        });
+
+        previewContainer.on("change", ".effect-selector", function () {
+            const value = $(this).val();
+            $(this).closest(".image-preview").attr("data-effect", value);
+            syncGlobalEffectState();
+        });
+
+        convertBtn.on("click", async function () {
+            const previews = $(".image-preview");
+            if (!previews.length) {
+                alert("Tambahkan setidaknya satu gambar sebelum mengonversi.");
+                return;
+            }
+
+            const compressionMode = compressionModeSelect.val();
+            let manualQuality = null;
+            if (compressionMode === "manual") {
+                manualQuality = Number(manualQualityInput.val());
+                if (Number.isNaN(manualQuality)) {
+                    alert("Masukkan nilai kualitas kompresi manual yang valid.");
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append("compressionMode", compressionMode);
+            if (manualQuality !== null) {
+                formData.append("manualQuality", manualQuality);
+            }
+
+            let missingFile = false;
+            previews.each(function (index) {
+                const preview = $(this);
+                const file = preview.data("file");
+                if (!file) {
+                    missingFile = true;
+                    return false;
+                }
+                const effect = preview.find(".effect-selector").val();
+                formData.append("files", file, file.name || `image-${index + 1}`);
+                formData.append("effects", effect);
+            });
+
+            if (missingFile) {
+                alert("Terjadi kesalahan saat memuat salah satu file. Silakan muat ulang halaman dan coba lagi.");
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch("/convert", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let message = "Gagal mengonversi gambar. Silakan coba lagi.";
+                    try {
+                        const errorPayload = await response.json();
+                        if (errorPayload && errorPayload.error) {
+                            message = errorPayload.error;
+                        }
+                    } catch (_) {
+                        // Abaikan error parsing
+                    }
+                    throw new Error(message);
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "output.pdf";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error(error);
+                alert(error.message || "Terjadi kesalahan saat mengonversi.");
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        updateImageCount();
+        syncGlobalEffectState();
+    </script>
+
+</body>
+</html>
